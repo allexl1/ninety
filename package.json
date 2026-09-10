@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "bash scripts/guard-css.sh && vite build",
+    "build": "bash scripts/guard-css.sh && node scripts/validate-data.mjs && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "engine-lab": "node scripts/engine-lab.mjs"
+    "engine-lab": "node scripts/engine-lab.mjs",
+    "validate-data": "node scripts/validate-data.mjs",
+    "p1-check": "node scripts/p1-check.mjs"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

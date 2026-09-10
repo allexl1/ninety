@@ -19,7 +19,7 @@ export function Modal({ open, onClose, label, children }) {
       onClick={onClose}
     >
       <div className="absolute inset-0 bg-black/70" />
-      <div className="glass relative w-full max-w-lg p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="glass relative max-h-[85vh] w-full max-w-lg overflow-y-auto p-5" onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>

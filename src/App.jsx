@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Dices, Shield, Swords, Trophy } from 'lucide-react';
+import { wheelTeams } from './data/index.js';
 import { Button } from './ui/Button.jsx';
 import { Card, Row } from './ui/Card.jsx';
 import { EmptyState, SkeletonGrid, Toast } from './ui/Feedback.jsx';
+import { Modal } from './ui/Modal.jsx';
 
 function useApiHealth() {
   const [state, setState] = useState({ status: 'loading' });
@@ -24,6 +26,13 @@ function useApiHealth() {
 export default function App() {
   const api = useApiHealth();
   const [toast, setToast] = useState('');
+  const teams = useMemo(() => wheelTeams(), []);
+  const [openId, setOpenId] = useState(null);
+  const open = teams.find((t) => t.id === openId);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('team');
+    if (q && teams.some((t) => t.id === q)) setOpenId(q);
+  }, [teams]);
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 2600);
@@ -120,20 +129,71 @@ export default function App() {
           </Card>
         </section>
 
+        <section aria-label="Starter dataset" className="mt-6">
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="ny-display text-lg font-bold text-white">STARTER DATASET · 8 WHEEL TEAMS</h2>
+            <span className="text-xs text-slate-500">EA FC-scale v0 · snapshot 2026-09-10</span>
+          </div>
+          <div className="ny-rail" role="list" aria-label="Wheel teams">
+            {teams.map((t) => (
+              <button
+                key={t.id}
+                role="listitem"
+                type="button"
+                onClick={() => setOpenId(t.id)}
+                aria-label={`View ${t.club} ${t.season} squad`}
+                className="ny-focus glass glass-hover cv p-4 text-left"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold tracking-widest text-slate-400">{t.competition} · {t.shape}</span>
+                  <span className="ny-num ny-accent text-2xl font-bold">{t.computed.overall.toFixed(0)}</span>
+                </div>
+                <div className="ny-display mt-1 text-xl font-bold text-white">{t.club}</div>
+                <div className="text-sm text-slate-400">{t.season} — {t.note}</div>
+                <div className="ny-num mt-2 text-xs text-slate-500">
+                  K{t.computed.keeper} · D{t.computed.defence.toFixed(0)} · M{t.computed.midfield.toFixed(0)} · A{t.computed.attack.toFixed(0)}
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+
         <section aria-label="Coming next" className="mt-6">
           <EmptyState
             icon={<Trophy size={22} />}
             title="Draft loop lands in P2"
-            description="Scaffold is live: glass tokens, volt accent, guard, Vercel, engine + harness. Next: starter dataset (8 + 19), then wheel → squad list → eligibility → live ratings."
-            action={<Button variant="ghost" aria-label="Run engine lab hint" onClick={() => setToast('Run `npm run engine-lab` in terminal for the 10k-season numbers.')}>How realism is measured</Button>}
+            description="Dataset is live: 8 sourced wheel teams + verified 26/27 EPL field. Next: wheel spin → squad list → eligibility → live line ratings → rerolls."
+            action={<Button variant="ghost" aria-label="Run checks hint" onClick={() => setToast('Run `npm run p1-check` for YOU@88/78/70 season projections.')}>How your XI projects</Button>}
           />
         </section>
 
-        <footer className="mt-10 flex items-center justify-between text-xs text-slate-500">
-          <span>NINETY · private prototype · EA FC snapshot dated in P1 · no logos/photos shipped</span>
+        <footer className="mt-10 flex flex-col gap-1 text-xs text-slate-500">
+          <span>NINETY · private prototype · ratings are an editorial FC-scale snapshot, not affiliated with EA, UEFA or the Premier League · no logos/photos shipped</span>
           <a href="/api/health" className="ny-focus underline">health</a>
         </footer>
       </div>
+      <Modal open={!!open} onClose={() => setOpenId(null)} label={open ? `${open.club} ${open.season} squad` : 'Squad'}>
+        {open ? (
+          <div>
+            <div className="flex items-baseline justify-between">
+              <h2 className="ny-display text-xl font-bold text-white">{open.club} <span className="text-slate-400">{open.season}</span></h2>
+              <span className="ny-num ny-accent text-2xl font-bold">{open.computed.overall.toFixed(1)}</span>
+            </div>
+            <p className="text-xs text-slate-500">{open.note} · {open.shape} · {open.competition}</p>
+            <h3 className="mt-3 text-xs font-bold tracking-widest text-slate-400">STARTING XI</h3>
+            {open.players.filter((p) => p.xi).map((p) => (
+              <Row key={p.name} left={p.name} right={p.rating} sub={`${p.pos.join('/')} · ${p.nation}`} />
+            ))}
+            <h3 className="mt-3 text-xs font-bold tracking-widest text-slate-400">SUBS</h3>
+            {open.players.filter((p) => !p.xi).map((p) => (
+              <Row key={p.name} left={p.name} right={p.rating} sub={`${p.pos.join('/')} · ${p.nation}`} />
+            ))}
+            <div className="mt-4 flex justify-end">
+              <Button variant="ghost" onClick={() => setOpenId(null)} aria-label="Close squad view">Close</Button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
       <Toast msg={toast} />
     </div>
   );
