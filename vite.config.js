@@ -8,7 +8,7 @@ function devApi() {
   return {
     name: 'ninety-dev-api',
     configureServer(server) {
-      server.middlewares.use('/api/', (req, res, next) => {
+      server.middlewares.use('/api/', (req, res) => {
         if (req.url?.startsWith('/health')) {
           res.setHeader('content-type', 'application/json')
           res.end(JSON.stringify({ ok: true, env: 'dev', game: 'NINETY' }))

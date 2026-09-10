@@ -1,10 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dices, Shield, Swords, Trophy } from 'lucide-react';
 import { wheelTeams } from './data/index.js';
+import { xiStrength } from './engine/ratings.js';
+import { buildCustom, PRESETS } from './game/formations.js';
+import { picksToXI, primeMap } from './game/draft.js';
+import { wheel } from './data/index.js';
+import { DEFAULT_SETUP, loadProfile, newRun, saveProfile, saveRunSummary } from './game/store.js';
 import { Button } from './ui/Button.jsx';
 import { Card, Row } from './ui/Card.jsx';
 import { EmptyState, SkeletonGrid, Toast } from './ui/Feedback.jsx';
 import { Modal } from './ui/Modal.jsx';
+import Setup from './screens/Setup.jsx';
+import Draft from './screens/Draft.jsx';
+
+const CURRENT_KEY = 'ninety.v1.current';
+const SETUP_KEY = 'ninety.v1.setup';
+
+function loadCurrent() {
+  try {
+    return JSON.parse(localStorage.getItem(CURRENT_KEY));
+  } catch {
+    return null;
+  }
+}
 
 function useApiHealth() {
   const [state, setState] = useState({ status: 'loading' });
@@ -23,9 +41,54 @@ function useApiHealth() {
   return { ...state, retry: load };
 }
 
+function DoneScreen({ done, blind, onHome, onNew }) {
+  const { run, slots, strength } = done;
+  const name = run.setup.displayName || 'You';
+  return (
+    <div className="mx-auto max-w-3xl">
+      <p className="ny-accent text-xs font-bold tracking-[0.2em]">XI COMPLETE</p>
+      <h1 className="ny-display mt-1 text-3xl font-bold text-white">{name}’s XI · <span className="ny-num">{blind ? '?' : strength.overall.toFixed(1)}</span></h1>
+      <p className="mt-1 text-sm text-slate-400">
+        {run.setup.preset === 'custom' ? `${run.setup.custom.df}-${run.setup.custom.mf}-${run.setup.custom.fw}` : run.setup.preset} · {run.setup.ratingMode === 'prime' ? 'Prime' : 'Season'} ratings · {run.setup.blind ? 'Blind' : 'Open'} · {run.setup.rerolls - run.rerollsLeft}/{run.setup.rerolls} rerolls used
+      </p>
+      <Card className="mt-4 p-4" aria-label="Completed XI">
+        {slots.map((code, i) => {
+          const pick = run.picks[i];
+          return <Row key={i} left={pick ? pick.player.name : `${code} — open`} right={pick ? (blind ? '?' : pick.player.rating) : '·'} sub={pick ? `${code} · ${pick.player.pos.join('/')} · ${pick.player.nation}` : code} />;
+        })}
+      </Card>
+      <EmptyState
+        icon={<Swords size={22} />}
+        title="Season theatre lands in P3"
+        description="Gaffer spin, pre-season odds, matchweek reveal with scorers, January gamble, final table + share. Your XI is saved below."
+        action={<span className="flex gap-2"><Button onClick={onNew} aria-label="New draft">New draft</Button><Button variant="ghost" onClick={onHome} aria-label="Home">Home</Button></span>}
+      />
+    </div>
+  );
+}
+
 export default function App() {
   const api = useApiHealth();
   const [toast, setToast] = useState('');
+  const [screen, setScreen] = useState('home');
+  const [run, setRun] = useState(null);
+  const [done, setDone] = useState(null);
+  const [savedSetup, setSavedSetup] = useState(() => {
+    try {
+      const raw = localStorage.getItem(SETUP_KEY);
+      const profile = loadProfile();
+      const base = raw ? { ...DEFAULT_SETUP, ...JSON.parse(raw) } : { ...DEFAULT_SETUP };
+      if (profile.displayName && !base.displayName) base.displayName = profile.displayName;
+      return base;
+    } catch {
+      return { ...DEFAULT_SETUP };
+    }
+  });
+  const [resumable, setResumable] = useState(() => {
+    const c = loadCurrent();
+    return c && c.phase === 'draft' ? c : null;
+  });
+  const primes = useMemo(() => primeMap(wheel.teams), []);
   const teams = useMemo(() => wheelTeams(), []);
   const [openId, setOpenId] = useState(null);
   const open = teams.find((t) => t.id === openId);
@@ -33,11 +96,64 @@ export default function App() {
     const q = new URLSearchParams(window.location.search).get('team');
     if (q && teams.some((t) => t.id === q)) setOpenId(q);
   }, [teams]);
+  function startRun(setup) {
+    try {
+      localStorage.setItem(SETUP_KEY, JSON.stringify(setup));
+      saveProfile({ displayName: setup.displayName ?? '' });
+    } catch { /* ignore */ }
+    setSavedSetup(setup);
+    const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
+    const r = newRun(setup, seed);
+    setRun(r);
+    setDone(null);
+    setScreen('draft');
+    window.scrollTo(0, 0);
+  }
+
+  function slotsFor(setup) {
+    if (setup.preset !== 'custom') return PRESETS.find((p) => p.shape === setup.preset).slots;
+    return buildCustom(setup.custom).slots;
+  }
+
+  function finishRun(completed) {
+    const slots = slotsFor(completed.setup);
+    const strength = xiStrength(picksToXI(completed.picks, slots, completed.setup.ratingMode, primes), completed.setup.preset === 'custom' ? `${completed.setup.custom.df}-${completed.setup.custom.mf}-${completed.setup.custom.fw}` : completed.setup.preset, null);
+    try {
+      localStorage.removeItem(CURRENT_KEY);
+      saveRunSummary({
+        seed: completed.seed,
+        overall: +strength.overall.toFixed(1),
+        shape: completed.setup.preset === 'custom' ? `${completed.setup.custom.df}-${completed.setup.custom.mf}-${completed.setup.custom.fw}` : completed.setup.preset,
+        ratingMode: completed.setup.ratingMode,
+        displayName: completed.setup.displayName || 'You',
+      });
+    } catch { /* ignore */ }
+    setResumable(null);
+    setDone({ run: completed, slots, strength });
+    setScreen('done');
+    window.scrollTo(0, 0);
+  }
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(''), 2600);
     return () => clearTimeout(t);
   }, [toast]);
+
+  function resumeBanner() {
+    if (!resumable || screen !== 'home') return null;
+    return (
+      <div className="mb-4" role="status">
+        <Card className="flex flex-wrap items-center justify-between gap-2 p-4">
+          <span className="text-sm text-slate-300">Unfinished draft: <strong className="ny-accent">{resumable.picks.filter(Boolean).length}/11</strong> picked</span>
+          <span className="flex gap-2">
+            <Button onClick={() => { setRun(resumable); setScreen('draft'); }} aria-label="Resume draft">Resume draft</Button>
+            <Button variant="ghost" onClick={() => { try { localStorage.removeItem(CURRENT_KEY); } catch { /* ignore */ } setResumable(null); }} aria-label="Discard">Discard</Button>
+          </span>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
@@ -53,12 +169,33 @@ export default function App() {
             <span className="ny-display text-xl font-bold tracking-wide text-white">NINETY</span>
           </div>
           <nav aria-label="Primary" className="flex gap-2">
-            <Button variant="ghost" aria-label="How it works">How it works</Button>
-            <Button aria-label="Start drafting" onClick={() => setToast('Draft loop lands in P2 — engine lab is live below.')}>
-              Build your XI
+            <Button variant="ghost" aria-label="How it works" onClick={() => setToast('Spin historic clubs → draft 11 → sim the 26/27 season. No account, runs save on this device.')}>How it works</Button>
+            {screen !== 'home' ? (
+              <Button variant="ghost" aria-label="Home" onClick={() => { setScreen('home'); window.scrollTo(0, 0); }}>Home</Button>
+            ) : null}
+            <Button aria-label="Build your XI" onClick={() => { setScreen(run && run.phase === 'draft' ? 'draft' : 'setup'); window.scrollTo(0, 0); }}>
+              {run && run.phase === 'draft' ? 'Continue draft' : 'Build your XI'}
             </Button>
           </nav>
         </header>
+
+        {screen === 'setup' ? (
+          <Setup initial={savedSetup} onBack={() => setScreen('home')} onStart={startRun} />
+        ) : null}
+        {screen === 'draft' && run ? (
+          <Draft
+            run={run}
+            onUpdate={(r) => { setRun(r); try { localStorage.setItem(CURRENT_KEY, JSON.stringify(r.phase === 'draft' ? r : null)); } catch { /* ignore */ } }}
+            onComplete={finishRun}
+            onRestart={() => { try { localStorage.removeItem(CURRENT_KEY); } catch { /* ignore */ } setResumable(null); setScreen('setup'); window.scrollTo(0, 0); }}
+          />
+        ) : null}
+        {screen === 'done' && done ? (
+          <DoneScreen done={done} blind={done.run.setup.blind} onHome={() => setScreen('home')} onNew={() => setScreen('setup')} />
+        ) : null}
+        {screen === 'home' ? (
+        <>
+        {resumeBanner()}
 
         <section className="ny-hero" aria-label="NINETY hero">
           <img
@@ -119,7 +256,7 @@ export default function App() {
                 icon="⚠"
                 title="API unreachable"
                 description={api.error}
-                action={<Button onClick={api.retry} aria-label="Retry API check">Retry</Button>}
+                action={<Button onClick={api.retry} aria-label="Retry">Retry</Button>}
               />
             ) : (
               <p className="mt-2 text-sm text-slate-300">
@@ -158,14 +295,16 @@ export default function App() {
           </div>
         </section>
 
-        <section aria-label="Coming next" className="mt-6">
+        <section aria-label="Draft now" className="mt-6">
           <EmptyState
             icon={<Trophy size={22} />}
-            title="Draft loop lands in P2"
-            description="Dataset is live: 8 sourced wheel teams + verified 26/27 EPL field. Next: wheel spin → squad list → eligibility → live line ratings → rerolls."
-            action={<Button variant="ghost" aria-label="Run checks hint" onClick={() => setToast('Run `npm run p1-check` for YOU@88/78/70 season projections.')}>How your XI projects</Button>}
+            title="The draft loop is live"
+            description="Setup → wheel → squad list → PLACE IN → live ratings → rerolls → move-a-player. Season theatre lands in P3."
+            action={<Button aria-label="Start a draft" onClick={() => { setScreen('setup'); window.scrollTo(0, 0); }}>Start a draft</Button>}
           />
         </section>
+        </>
+        ) : null}
 
         <footer className="mt-10 flex flex-col gap-1 text-xs text-slate-500">
           <span>NINETY · private prototype · ratings are an editorial FC-scale snapshot, not affiliated with EA, UEFA or the Premier League · no logos/photos shipped</span>
@@ -189,7 +328,7 @@ export default function App() {
               <Row key={p.name} left={p.name} right={p.rating} sub={`${p.pos.join('/')} · ${p.nation}`} />
             ))}
             <div className="mt-4 flex justify-end">
-              <Button variant="ghost" onClick={() => setOpenId(null)} aria-label="Close squad view">Close</Button>
+              <Button variant="ghost" onClick={() => setOpenId(null)} aria-label="Close">Close</Button>
             </div>
           </div>
         ) : null}

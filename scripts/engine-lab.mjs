@@ -7,7 +7,6 @@ import { playMatch } from '../src/engine/match.js';
 import { simSeason } from '../src/engine/season.js';
 
 const SEASONS = 10000;
-const rng = mulberry32(90);
 
 // League spread: 2 elites (~88), 4 strong (~82), 8 mid (~77), 4 weak (~71), 2 minnows (~65).
 function makeLeague() {
