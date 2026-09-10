@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+/* NINETY glass tokens — FotMob-style deep navy-black + ONE volt accent.
+   Stolen from: Moviezilla glass system (blur/saturation/hairline/top-light),
+   FotMob data density (condensed numerals, hairline rows). */
+
+:root {
+  --ny-bg: #070b14;
+  --ny-bg-2: #0b1220;
+  --ny-ink: #f2f5f9;
+  --ny-muted: #9aa6b8;
+  --ny-accent: #d9ff3d; /* volt — the ONE accent. Never lime #95ff50. */
+  --ny-accent-ink: #131a00;
+  --ny-win: #34d399;
+  --ny-loss: #f87171;
+  --ny-draw: #9aa6b8;
+  --ny-hairline: rgba(255, 255, 255, 0.09);
+  --ny-blur: 18px;
+  --ny-sat: 1.4;
+  --ny-r-sm: 10px;
+  --ny-r-md: 16px;
+  --ny-r-lg: 24px;
+  --ny-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ny-disp: "Arial Narrow", "Helvetica Neue Condensed", Oswald, system-ui, sans-serif;
+  --ny-ui: system-ui, -apple-system, "Inter", "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--ny-ui);
+  color: var(--ny-ink);
+  background: var(--ny-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ambient layers sit fixed behind scrolling content (content z-10 above). */
+.ny-ambient { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+.ny-ambient-a {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(900px 480px at 15% -5%, rgba(217, 255, 61, 0.07), transparent 60%),
+    radial-gradient(1000px 600px at 90% 10%, rgba(56, 130, 246, 0.12), transparent 60%),
+    linear-gradient(180deg, #0b1220 0%, #070b14 55%, #05080f 100%);
+}
+.ny-ambient-b {
+  position: absolute; inset: 0; opacity: 0.5;
+  background-image: linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(80% 60% at 50% 0%, black, transparent);
+}
+.ny-content { position: relative; z-index: 10; }
+
+/* Neutral glass surface — NO tinted/neon glass. */
+.glass {
+  background: rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(var(--ny-blur)) saturate(var(--ny-sat));
+  -webkit-backdrop-filter: blur(var(--ny-blur)) saturate(var(--ny-sat));
+  border: 1px solid var(--ny-hairline);
+  border-radius: var(--ny-r-md);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -12px 24px rgba(0,0,0,0.25);
+}
+.glass-hover { transition: transform 0.25s var(--ny-ease), border-color 0.25s var(--ny-ease); }
+.glass-hover:hover { transform: translateY(-2px) scale(1.02); border-color: rgba(255,255,255,0.16); }
+
+.ny-display { font-family: var(--ny-disp); letter-spacing: 0.01em; }
+.ny-num { font-family: var(--ny-disp); font-variant-numeric: tabular-nums; }
+
+/* Hero → content melt: sharp art dissolves into SAME art blurred; scrim ends
+   at the ghost's darkness so no seam line can form. */
+.ny-hero { position: relative; overflow: hidden; border-radius: var(--ny-r-lg); border: 1px solid var(--ny-hairline); }
+.ny-hero img.sharp { display: block; width: 100%; height: 300px; object-fit: cover; }
+.ny-hero .ghost {
+  position: absolute; inset: auto 0 0 0; height: 120px;
+  background: inherit; filter: blur(24px) saturate(1.2);
+  transform: scaleY(-1);
+  mask-image: linear-gradient(180deg, transparent, black);
+}
+.ny-hero .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(7,11,20,0.9) 100%); }
+
+/* Rails + grids vocabulary */
+.ny-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 280px); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.ny-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.ny-rowline { border-top: 1px solid var(--ny-hairline); }
+.cv { content-visibility: auto; contain-intrinsic-size: 240px; }
+
+/* Single accent usage: ratings, progress, selected, focus, key CTA only. */
+.ny-accent { color: var(--ny-accent); }
+.ny-accent-bg { background: var(--ny-accent); color: var(--ny-accent-ink); }
+.ny-focus:focus-visible { outline: 2px solid var(--ny-accent); outline-offset: 2px; }
+
+/* Skeletons — loading states are NEVER plain text. */
+@keyframes ny-shimmer { from { background-position: -400px 0; } to { background-position: 400px 0; } }
+.sk {
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.11) 37%, rgba(255,255,255,0.05) 63%);
+  background-size: 800px 100%;
+  animation: ny-shimmer 1.2s infinite linear;
+}
+
+/* Reduced motion + power modes strip blur/animation. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+.power-low .glass, .power-max .glass { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.power-low *, .power-max * { animation: none !important; transition: none !important; }
+.power-low .ny-ambient-b, .power-max .ny-ambient-b { display: none; }
+
+::selection { background: rgba(217, 255, 61, 0.85); color: #131a00; }
