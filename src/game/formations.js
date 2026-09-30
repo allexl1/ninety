@@ -63,8 +63,12 @@ export function buildCustom({ df, mf, fw, wingbacks = false, wideMF = true }) {
   return { shape: `${df}-${mf}-${fw}`, slots };
 }
 
-export function shapeOf(slots) {
-  const out = slots.filter((s) => s !== 'GK');
+export function slotsFor(setup) {
+  if (setup.preset !== 'custom') return PRESETS.find((p) => p.shape === setup.preset).slots;
+  return buildCustom(setup.custom).slots;
+}
+
+export function shapeOf(slots) {  const out = slots.filter((s) => s !== 'GK');
   const df = out.filter((s) => SLOT_LINE[s] === 'defenders').length;
   const mf = out.filter((s) => SLOT_LINE[s] === 'midfielders').length;
   const fw = out.filter((s) => SLOT_LINE[s] === 'attackers').length;

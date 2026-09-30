@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Dices, Shield, Swords, Trophy } from 'lucide-react';
 import { wheelTeams } from './data/index.js';
 import { xiStrength } from './engine/ratings.js';
-import { buildCustom, PRESETS } from './game/formations.js';
-import { picksToXI, primeMap } from './game/draft.js';
+import { slotsFor } from './game/formations.js';
+import { picksToXI, primeMap, ratingFor } from './game/draft.js';
+import { userScorers } from './game/season.js';
+import { decodeShare } from './game/share.js';
 import { wheel } from './data/index.js';
 import { DEFAULT_SETUP, loadProfile, newRun, saveProfile, saveRunSummary } from './game/store.js';
 import { Button } from './ui/Button.jsx';
@@ -12,6 +14,9 @@ import { EmptyState, SkeletonGrid, Toast } from './ui/Feedback.jsx';
 import { Modal } from './ui/Modal.jsx';
 import Setup from './screens/Setup.jsx';
 import Draft from './screens/Draft.jsx';
+import Gaffer from './screens/Gaffer.jsx';
+import Season from './screens/Season.jsx';
+import Final, { ShareView } from './screens/Final.jsx';
 
 const CURRENT_KEY = 'ninety.v1.current';
 const SETUP_KEY = 'ninety.v1.setup';
@@ -41,38 +46,31 @@ function useApiHealth() {
   return { ...state, retry: load };
 }
 
-function DoneScreen({ done, blind, onHome, onNew }) {
-  const { run, slots, strength } = done;
-  const name = run.setup.displayName || 'You';
-  return (
-    <div className="mx-auto max-w-3xl">
-      <p className="ny-accent text-xs font-bold tracking-[0.2em]">XI COMPLETE</p>
-      <h1 className="ny-display mt-1 text-3xl font-bold text-white">{name}’s XI · <span className="ny-num">{blind ? '?' : strength.overall.toFixed(1)}</span></h1>
-      <p className="mt-1 text-sm text-slate-400">
-        {run.setup.preset === 'custom' ? `${run.setup.custom.df}-${run.setup.custom.mf}-${run.setup.custom.fw}` : run.setup.preset} · {run.setup.ratingMode === 'prime' ? 'Prime' : 'Season'} ratings · {run.setup.blind ? 'Blind' : 'Open'} · {run.setup.rerolls - run.rerollsLeft}/{run.setup.rerolls} rerolls used
-      </p>
-      <Card className="mt-4 p-4" aria-label="Completed XI">
-        {slots.map((code, i) => {
-          const pick = run.picks[i];
-          return <Row key={i} left={pick ? pick.player.name : `${code} — open`} right={pick ? (blind ? '?' : pick.player.rating) : '·'} sub={pick ? `${code} · ${pick.player.pos.join('/')} · ${pick.player.nation}` : code} />;
-        })}
-      </Card>
-      <EmptyState
-        icon={<Swords size={22} />}
-        title="Season theatre lands in P3"
-        description="Gaffer spin, pre-season odds, matchweek reveal with scorers, January gamble, final table + share. Your XI is saved below."
-        action={<span className="flex gap-2"><Button onClick={onNew} aria-label="New draft">New draft</Button><Button variant="ghost" onClick={onHome} aria-label="Home">Home</Button></span>}
-      />
-    </div>
-  );
+function ShareRoute({ onHome, onNew }) {
+  const payload = decodeShare(window.location.hash);
+  if (!payload) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <EmptyState
+          icon="🔗"
+          title="Broken share link"
+          description="That link doesn't decode to a season. Ask your mate to copy it again."
+          action={<Button onClick={onHome} aria-label="Home">Home</Button>}
+        />
+      </div>
+    );
+  }
+  return <ShareView payload={payload} onHome={onHome} onNew={onNew} />;
 }
 
 export default function App() {
   const api = useApiHealth();
   const [toast, setToast] = useState('');
-  const [screen, setScreen] = useState('home');
+  const [screen, setScreen] = useState(() => (window.location.hash.startsWith('#/s/') ? 'share' : 'home'));
   const [run, setRun] = useState(null);
-  const [done, setDone] = useState(null);
+  const [field, setField] = useState(null);
+  const [odds, setOdds] = useState(null);
+  const [finalData, setFinalData] = useState(null);
   const [savedSetup, setSavedSetup] = useState(() => {
     try {
       const raw = localStorage.getItem(SETUP_KEY);
@@ -105,34 +103,86 @@ export default function App() {
     const seed = (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0;
     const r = newRun(setup, seed);
     setRun(r);
-    setDone(null);
+    setField(null);
+    setOdds(null);
+    setFinalData(null);
     setScreen('draft');
     window.scrollTo(0, 0);
   }
 
-  function slotsFor(setup) {
-    if (setup.preset !== 'custom') return PRESETS.find((p) => p.shape === setup.preset).slots;
-    return buildCustom(setup.custom).slots;
-  }
-
   function finishRun(completed) {
+    // Draft done → attach engine XI + scorer entries, head to gaffer.
     const slots = slotsFor(completed.setup);
-    const strength = xiStrength(picksToXI(completed.picks, slots, completed.setup.ratingMode, primes), completed.setup.preset === 'custom' ? `${completed.setup.custom.df}-${completed.setup.custom.mf}-${completed.setup.custom.fw}` : completed.setup.preset, null);
+    const shape = completed.setup.preset === 'custom'
+      ? `${completed.setup.custom.df}-${completed.setup.custom.mf}-${completed.setup.custom.fw}`
+      : completed.setup.preset;
+    const strength = xiStrength(picksToXI(completed.picks, slots, completed.setup.ratingMode, primes), shape, null);
+    const squad = userScorers(completed.picks, slots, (p) => ratingFor(p, completed.setup.ratingMode, primes));
+    const withXI = {
+      ...completed,
+      slots,
+      shape,
+      xi: { keeper: strength.keeper, defence: strength.defence, midfield: strength.midfield, attack: strength.attack, overall: strength.overall },
+      userSquad: squad,
+    };
     try {
       localStorage.removeItem(CURRENT_KEY);
       saveRunSummary({
-        seed: completed.seed,
+        seed: withXI.seed,
         overall: +strength.overall.toFixed(1),
-        shape: completed.setup.preset === 'custom' ? `${completed.setup.custom.df}-${completed.setup.custom.mf}-${completed.setup.custom.fw}` : completed.setup.preset,
-        ratingMode: completed.setup.ratingMode,
-        displayName: completed.setup.displayName || 'You',
+        shape,
+        ratingMode: withXI.setup.ratingMode,
+        displayName: withXI.setup.displayName || 'You',
       });
     } catch { /* ignore */ }
     setResumable(null);
-    setDone({ run: completed, slots, strength });
-    setScreen('done');
+    setRun(withXI);
+    setScreen('gaffer');
     window.scrollTo(0, 0);
   }
+
+  function beginSeason(runWithGaffer, nextField, nextOdds) {
+    setRun(runWithGaffer);
+    setField(nextField);
+    setOdds(nextOdds);
+    setScreen('season');
+    window.scrollTo(0, 0);
+  }
+
+  function finishSeason(result) {
+    // January swaps change strength: recompute lines from the swapped picks.
+    let xi = run.xi;
+    if (result.january?.swapped && result.january.picks) {
+      const slots = run.slots;
+      const shape = run.shape;
+      const full = xiStrength(picksToXI(result.january.picks, slots, run.setup.ratingMode, primes), shape, run.gaffer);
+      xi = { keeper: full.keeper, defence: full.defence, midfield: full.midfield, attack: full.attack, overall: full.overall };
+    }
+    setFinalData({ ...result, setup: run.setup, picks: result.january?.picks ?? run.picks, slots: run.slots, gaffer: run.gaffer, xi, odds, field });
+    try {
+      saveRunSummary({ seed: run.seed, season: `${result.standings.find((t) => t.id === 'YOU-1')?.p ?? '?'}pts`, pos: result.standings.findIndex((t) => t.id === 'YOU-1') + 1 });
+    } catch { /* ignore */ }
+    setScreen('final');
+    window.scrollTo(0, 0);
+  }
+
+  function screenForActiveRun() {
+    if (!run) return 'setup';
+    if (run.phase === 'draft') return 'draft';
+    if (!run.gaffer && !field) return 'gaffer';
+    if (!finalData) return 'season';
+    return 'final';
+  }
+
+  useEffect(() => {
+    const onHash = () => {
+      if (window.location.hash.startsWith('#/s/')) setScreen('share');
+      else if (screen === 'share') setScreen('home');
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!toast) return;
@@ -173,8 +223,8 @@ export default function App() {
             {screen !== 'home' ? (
               <Button variant="ghost" aria-label="Home" onClick={() => { setScreen('home'); window.scrollTo(0, 0); }}>Home</Button>
             ) : null}
-            <Button aria-label="Build your XI" onClick={() => { setScreen(run && run.phase === 'draft' ? 'draft' : 'setup'); window.scrollTo(0, 0); }}>
-              {run && run.phase === 'draft' ? 'Continue draft' : 'Build your XI'}
+            <Button aria-label="Build your XI" onClick={() => { setScreen(run ? screenForActiveRun() : 'setup'); window.scrollTo(0, 0); }}>
+              {run ? (run.phase === 'draft' ? 'Continue draft' : 'Continue season') : 'Build your XI'}
             </Button>
           </nav>
         </header>
@@ -190,8 +240,32 @@ export default function App() {
             onRestart={() => { try { localStorage.removeItem(CURRENT_KEY); } catch { /* ignore */ } setResumable(null); setScreen('setup'); window.scrollTo(0, 0); }}
           />
         ) : null}
-        {screen === 'done' && done ? (
-          <DoneScreen done={done} blind={done.run.setup.blind} onHome={() => setScreen('home')} onNew={() => setScreen('setup')} />
+        {screen === 'gaffer' && run ? (
+          <Gaffer
+            run={run}
+            onSimulate={beginSeason}
+            onRestart={() => { setScreen('setup'); window.scrollTo(0, 0); }}
+          />
+        ) : null}
+        {screen === 'season' && run && field ? (
+          <Season
+            run={run}
+            field={field}
+            odds={odds}
+            onFinish={finishSeason}
+            onRestart={() => { setScreen('setup'); window.scrollTo(0, 0); }}
+          />
+        ) : null}
+        {screen === 'final' && finalData ? (
+          <Final
+            data={finalData}
+            onHome={() => { setScreen('home'); window.scrollTo(0, 0); }}
+            onNew={() => setScreen('setup')}
+            onRestart={() => { setScreen('setup'); window.scrollTo(0, 0); }}
+          />
+        ) : null}
+        {screen === 'share' ? (
+          <ShareRoute onHome={() => { window.location.hash = ''; setScreen('home'); }} onNew={() => { window.location.hash = ''; setScreen('setup'); }} />
         ) : null}
         {screen === 'home' ? (
         <>
