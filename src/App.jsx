@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Dices, Shield, Swords, Trophy } from 'lucide-react';
+import { Dices, Shield, Swords, Trophy, Unlink } from 'lucide-react';
 import { wheelTeams } from './data/index.js';
 import { xiStrength } from './engine/ratings.js';
 import { slotsFor } from './game/formations.js';
@@ -17,6 +17,8 @@ import Draft from './screens/Draft.jsx';
 import Gaffer from './screens/Gaffer.jsx';
 import Season from './screens/Season.jsx';
 import Final, { ShareView } from './screens/Final.jsx';
+import Tournament from './screens/Tournament.jsx';
+import { europeSpot } from './game/season.js';
 
 const CURRENT_KEY = 'ninety.v1.current';
 const SETUP_KEY = 'ninety.v1.setup';
@@ -52,7 +54,7 @@ function ShareRoute({ onHome, onNew }) {
     return (
       <div className="mx-auto max-w-3xl">
         <EmptyState
-          icon="🔗"
+          icon={<Unlink size={22} />}
           title="Broken share link"
           description="That link doesn't decode to a season. Ask your mate to copy it again."
           action={<Button onClick={onHome} aria-label="Home">Home</Button>}
@@ -71,6 +73,7 @@ export default function App() {
   const [field, setField] = useState(null);
   const [odds, setOdds] = useState(null);
   const [finalData, setFinalData] = useState(null);
+  const [tournLabel, setTournLabel] = useState('Champions League');
   const [savedSetup, setSavedSetup] = useState(() => {
     try {
       const raw = localStorage.getItem(SETUP_KEY);
@@ -262,6 +265,27 @@ export default function App() {
             onHome={() => { setScreen('home'); window.scrollTo(0, 0); }}
             onNew={() => setScreen('setup')}
             onRestart={() => { setScreen('setup'); window.scrollTo(0, 0); }}
+            onEnterTournament={() => {
+              const pos = finalData.standings.findIndex((t) => t.id === 'YOU-1') + 1;
+              setTournLabel(europeSpot(pos)?.label ?? 'Champions League');
+              setScreen('tournament');
+              window.scrollTo(0, 0);
+            }}
+          />
+        ) : null}
+        {screen === 'tournament' && run && finalData ? (
+          <Tournament
+            run={run}
+            standings={finalData.standings}
+            label={tournLabel}
+            onDone={(t) => {
+              try {
+                saveRunSummary({ seed: run.seed, euro: `${t.label}: ${t.winnerId === 'YOU-1' ? 'champions' : t.userOut}` });
+              } catch { /* ignore */ }
+            }}
+            onRestart={() => { setScreen('setup'); window.scrollTo(0, 0); }}
+            onHome={() => { setScreen('home'); window.scrollTo(0, 0); }}
+            onNew={() => setScreen('setup')}
           />
         ) : null}
         {screen === 'share' ? (
@@ -271,23 +295,18 @@ export default function App() {
         <>
         {resumeBanner()}
 
-        <section className="ny-hero" aria-label="NINETY hero">
-          <img
-            className="sharp"
-            src="https://images.unsplash.com/photo-1522778119026-d647f0596c20?w=1600&q=60&auto=format&fit=crop"
-            alt="Floodlit football pitch at night"
-            loading="eager"
-          />
-          <div className="ghost" aria-hidden="true" />
-          <div className="scrim" aria-hidden="true" />
-          <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10">
+        <section className="ny-hero ny-motif" aria-label="NINETY hero">
+          <div className="ny-motif-line" aria-hidden="true" />
+          <div className="ny-motif-ring" aria-hidden="true" />
+          <div className="ny-motif-spot" aria-hidden="true" />
+          <div className="relative flex flex-col justify-end p-6 sm:p-10" style={{ minHeight: 320 }}>
             <p className="ny-accent text-xs font-bold tracking-[0.2em]">DRAFT + SEASON SIMULATOR</p>
             <h1 className="ny-display mt-1 max-w-2xl text-4xl font-bold text-white sm:text-6xl">
               Build your XI. Sim the season.
             </h1>
             <p className="mt-2 max-w-xl text-sm text-slate-300 sm:text-base">
               Spin the historic wheel, draft 11 into detailed slots, then take your XI into the
-              26/27 season. Engine: Elo + Poisson/Dixon–Coles, measured — never vibes.
+              26/27 season. Engine: Elo + Poisson/Dixon-Coles, measured, never vibes.
             </p>
           </div>
         </section>
@@ -316,7 +335,7 @@ export default function App() {
               <code className="rounded bg-white/10 px-1 text-xs text-white">npm run engine-lab</code>.
             </p>
             <div className="mt-3">
-              <Row left="Elite 88 vs weak 71 (home) — target 65–70%" right="see terminal" sub="HARD RULE · draws count as non-wins" />
+              <Row left="Elite 88 vs weak 71 (home), target 65–70%" right="see terminal" sub="HARD RULE · draws count as non-wins" />
               <Row left="Miracle runs (champ <72)" right="rare" sub="No regular Lille-in-the-semis" />
               <Row left="Title concentration top-2" right="measured" sub="Printed per harness run" />
             </div>
@@ -360,7 +379,7 @@ export default function App() {
                   <span className="ny-num ny-accent text-2xl font-bold">{t.computed.overall.toFixed(0)}</span>
                 </div>
                 <div className="ny-display mt-1 text-xl font-bold text-white">{t.club}</div>
-                <div className="text-sm text-slate-400">{t.season} — {t.note}</div>
+                <div className="text-sm text-slate-400">{t.season}, {t.note}</div>
                 <div className="ny-num mt-2 text-xs text-slate-500">
                   K{t.computed.keeper} · D{t.computed.defence.toFixed(0)} · M{t.computed.midfield.toFixed(0)} · A{t.computed.attack.toFixed(0)}
                 </div>

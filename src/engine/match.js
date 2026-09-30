@@ -15,13 +15,13 @@ const BASE_HOME = 1.42;
 const BASE_AWAY = 1.24;
 const SLOPE = 0.0026; // xG per Elo point of diff (calibrated: equal-home ≈43-46%)
 
-export function winProb(homeOverall, awayOverall) {
-  const dr = ratingToElo(homeOverall) + HFA_ELO - ratingToElo(awayOverall);
+export function winProb(homeOverall, awayOverall, hfa = HFA_ELO) {
+  const dr = ratingToElo(homeOverall) + hfa - ratingToElo(awayOverall);
   return 1 / (1 + Math.pow(10, -dr / 400));
 }
 
-export function expectedGoals(homeOverall, awayOverall) {
-  const diff = ratingToElo(homeOverall) + HFA_ELO - ratingToElo(awayOverall);
+export function expectedGoals(homeOverall, awayOverall, hfa = HFA_ELO) {
+  const diff = ratingToElo(homeOverall) + hfa - ratingToElo(awayOverall);
   const hxg = clamp(BASE_HOME + diff * SLOPE, 0.15, 3.9);
   const axg = clamp(BASE_AWAY - diff * SLOPE, 0.12, 3.4);
   return { hxg, axg };
@@ -41,8 +41,8 @@ function tau(h, a, hxg, axg, rho = RHO) {
 }
 
 // Rejection-sample one scoreline: draw independent Poisson, accept with tau.
-export function playMatch(homeOverall, awayOverall, rng) {
-  const { hxg, axg } = expectedGoals(homeOverall, awayOverall);
+export function playMatch(homeOverall, awayOverall, rng, hfa = HFA_ELO) {
+  const { hxg, axg } = expectedGoals(homeOverall, awayOverall, hfa);
   for (let tries = 0; tries < 12; tries += 1) {
     const h = poisson(hxg, rng);
     const a = poisson(axg, rng);

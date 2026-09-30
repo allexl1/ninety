@@ -36,7 +36,7 @@ export function findPlayer(teamId, name) {
 
 export function captionText({ displayName, w, d, l, pts, pos, projected, overall, topScorer, gaffer }) {
   const me = displayName || 'My XI';
-  return `${me} went ${w}-${d}-${l} (${pts} pts, ${pos}${ordinal(pos)}) with an ${overall} XI — projected ${projected}${ordinal(projected)}. Top scorer: ${topScorer}. Gaffer: ${gaffer}. Build your XI. Sim the season. — NINETY`;
+  return `${me} went ${w}-${d}-${l} (${pts} pts, ${pos}${ordinal(pos)}) with an ${overall} XI, projected ${projected}${ordinal(projected)}. Top scorer: ${topScorer}. Gaffer: ${gaffer}. Build your XI. Sim the season. (NINETY)`;
 }
 
 function ordinal(n) {

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Dices, Pause, Play, RotateCcw } from 'lucide-react';
 import { wheel } from '../data/index.js';
 import { xiStrength } from '../engine/ratings.js';
 import { createRng, filterWheel, picksToXI, primeMap, ratingFor, spinWheel } from '../game/draft.js';
@@ -96,7 +97,7 @@ export default function Season({ run, field, odds, onFinish, onRestart }) {
         return;
       }
     }
-    setToast('No fitting punts anywhere — keep the faith');
+    setToast('No fitting punts anywhere, keep the faith');
   }
 
   function janPick(player) {
@@ -115,7 +116,7 @@ export default function Season({ run, field, odds, onFinish, onRestart }) {
       group: ({ GK: 'GK', RB: 'DEF', CB: 'DEF', LB: 'DEF', RWB: 'DEF', LWB: 'DEF', CDM: 'MID', CM: 'MID', CAM: 'MID', RM: 'MID', LM: 'MID', RW: 'FWD', LW: 'FWD', ST: 'FWD' })[slots[pk.slotIndex]],
       ovr: rate(pk.player),
     }));
-    setToast(`${player.name} in for ${out} — new overall ${s.overall.toFixed(0)}`);
+    setToast(`${player.name} in for ${out}, new overall ${s.overall.toFixed(0)}`);
     decideJanuary(true, { outName: out, inName: player.name, newOverall: s.overall, newSquad, picks }, s.overall, newSquad);
   }
 
@@ -160,12 +161,12 @@ export default function Season({ run, field, odds, onFinish, onRestart }) {
             <Button onClick={() => setPlaying(true)} aria-label="Kick off the season">Kick off →</Button>
           ) : week < 38 ? (
             <>
-              <Button variant="ghost" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause reveal' : 'Resume reveal'}>{playing ? '❚❚ Pause' : '▶ Resume'}</Button>
-              {week < 19 && <Button variant="ghost" onClick={() => { setWeek(19); setPlaying(false); }} aria-label="Skip to January">Skip to January →</Button>}
-              <Button variant="ghost" onClick={skipAll} aria-label="Skip to end">Skip all →</Button>
+              <Button variant="ghost" onClick={() => setPlaying((p) => !p)} aria-label={playing ? 'Pause reveal' : 'Resume reveal'}>{playing ? <><Pause size={14} aria-hidden="true" /> Pause</> : <><Play size={14} aria-hidden="true" /> Resume</>}</Button>
+              {week < 19 && <Button variant="ghost" onClick={() => { setWeek(19); setPlaying(false); }} aria-label="Skip to January">Skip to January</Button>}
+              <Button variant="ghost" onClick={skipAll} aria-label="Skip to end">Skip all</Button>
             </>
           ) : null}
-          <Button variant="ghost" onClick={onRestart} aria-label="Restart">↺</Button>
+          <Button variant="ghost" onClick={onRestart} aria-label="Restart"><RotateCcw size={14} aria-hidden="true" /></Button>
         </div>
       </header>
 
@@ -194,13 +195,13 @@ export default function Season({ run, field, odds, onFinish, onRestart }) {
           <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
             <Select label="Slot to gamble on" value={janSlot} onChange={(e) => { setJanSlot(e.target.value); setJanTeam(null); }}>
               <option value="">Pick a slot…</option>
-              {run.picks.map((p, i) => p ? <option key={i} value={i}>{slots[i]} — {p.player.name}{blind ? '' : ` (${rate(p.player)})`}</option> : null)}
+              {run.picks.map((p, i) => p ? <option key={i} value={i}>{slots[i]} · {p.player.name}{blind ? '' : ` (${rate(p.player)})`}</option> : null)}
             </Select>
-            <Button variant="ghost" onClick={janSpin} aria-label="Spin for January option" className="self-end">🎰 Spin</Button>
+            <Button variant="ghost" onClick={janSpin} aria-label="Spin for January option" className="self-end"><Dices size={16} aria-hidden="true" /> Spin</Button>
           </div>
           {janTeam ? (
             <div className="mt-3">
-              <p className="text-sm text-white">{janTeam.club} <span className="text-slate-400">{janTeam.season}</span> — fits {slots[Number(janSlot)]}:</p>
+              <p className="text-sm text-white">{janTeam.club} <span className="text-slate-400">{janTeam.season}</span>, fits {slots[Number(janSlot)]}:</p>
               <div className="ny-grid mt-2">
                 {janTeam.cands.slice(0, 6).map((p) => (
                   <button key={p.name} type="button" onClick={() => janPick(p)}
@@ -237,7 +238,7 @@ export default function Season({ run, field, odds, onFinish, onRestart }) {
           </Card>
         ))}
         {week === 0 ? (
-          <Card className="p-6 text-center text-sm text-slate-400">Press Kick off — results appear here, latest first, never spoiled ahead.</Card>
+          <Card className="p-6 text-center text-sm text-slate-400">Press Kick off. Results appear here, latest first, never spoiled ahead.</Card>
         ) : null}
       </div>
       <Toast msg={toast} />

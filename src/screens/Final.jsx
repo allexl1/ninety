@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { Copy, Download, Link2, RotateCcw, Unlink } from 'lucide-react';
 import { europeSpot } from '../game/season.js';
 import { captionText, drawShareCard, encodeShare } from '../game/share.js';
 import { Button } from '../ui/Button.jsx';
@@ -14,9 +15,9 @@ function lineWord(v) {
 
 function verdict(pos, projected) {
   const d = projected - pos;
-  if (d === 0) return { tag: 'TO THE LETTER', line: `Finished ${pos}${ordinal(pos)} — exactly what the projections said.` };
-  if (d > 0) return { tag: 'ABOVE THE SCRIPT', line: `Finished ${pos}${ordinal(pos)} vs projected ${projected}${ordinal(projected)} — the XI beat the model.` };
-  return { tag: 'BELOW THE SCRIPT', line: `Finished ${pos}${ordinal(pos)} vs projected ${projected}${ordinal(projected)} — the model wins this one.` };
+  if (d === 0) return { tag: 'TO THE LETTER', line: `Finished ${pos}${ordinal(pos)}, exactly what the projections said.` };
+  if (d > 0) return { tag: 'ABOVE THE SCRIPT', line: `Finished ${pos}${ordinal(pos)} vs projected ${projected}${ordinal(projected)}. The XI beat the model.` };
+  return { tag: 'BELOW THE SCRIPT', line: `Finished ${pos}${ordinal(pos)} vs projected ${projected}${ordinal(projected)}. The model wins this one.` };
 }
 
 function ordinal(n) {
@@ -39,7 +40,7 @@ async function copyText(text, ok) {
   }
 }
 
-export default function Final({ data, onHome, onNew, onRestart, readOnly = false }) {
+export default function Final({ data, onHome, onNew, onRestart, onEnterTournament, readOnly = false }) {
   const { setup, picks, slots, gaffer, xi, standings, userMatches, scorers, january, odds } = data;
   const [toast, setToast] = useState('');
   const canvasRef = useRef(null);
@@ -49,7 +50,7 @@ export default function Final({ data, onHome, onNew, onRestart, readOnly = false
     return (
       <div className="mx-auto max-w-3xl">
         <EmptyState
-          icon="🔗"
+          icon={<Unlink size={22} />}
           title="Broken share link"
           description="That link doesn't decode to a season. Ask your mate to copy it again."
           action={<Button onClick={onHome} aria-label="Home">Home</Button>}
@@ -84,7 +85,7 @@ export default function Final({ data, onHome, onNew, onRestart, readOnly = false
     copyText(captionText({
       displayName: me, w: youRow.w, d: youRow.d, l: youRow.l, pts: youRow.p, pos,
       projected: odds?.projected ?? pos, overall: xi.overall.toFixed(0),
-      topScorer: boot ? `${boot.name} (${boot.g})` : '—', gaffer: gaffer?.name ?? 'none',
+      topScorer: boot ? `${boot.name} (${boot.g})` : 'none', gaffer: gaffer?.name ?? 'none',
     }), () => say('Caption copied'));
   }
 
@@ -121,39 +122,40 @@ export default function Final({ data, onHome, onNew, onRestart, readOnly = false
         <p className="ny-accent text-xs font-bold tracking-[0.2em]">{v.tag}</p>
         <p className="mt-1 text-sm text-slate-300">{v.line}</p>
         <div className="mt-3">
-          <Row left="Attack" right={lineWord(xi.attack)} sub={`${xi.attack.toFixed(0)} — ${topLine === 'attack' ? 'carried the team' : 'did the job'}`} />
-          <Row left="Midfield" right={lineWord(xi.midfield)} sub={`${xi.midfield.toFixed(0)} — ${topLine === 'midfield' ? 'carried the team' : 'did the job'}`} />
-          <Row left="Defence" right={lineWord(xi.defence)} sub={`${xi.defence.toFixed(0)} — ${topLine === 'defence' ? 'carried the team' : 'did the job'}`} />
-          <Row left="Keeper" right={lineWord(xi.keeper)} sub={`${xi.keeper.toFixed(0)} — ${topLine === 'keeper' ? 'carried the team' : 'did the job'}`} />
+          <Row left="Attack" right={lineWord(xi.attack)} sub={`${xi.attack.toFixed(0)}, ${topLine === 'attack' ? 'carried the team' : 'did the job'}`} />
+          <Row left="Midfield" right={lineWord(xi.midfield)} sub={`${xi.midfield.toFixed(0)}, ${topLine === 'midfield' ? 'carried the team' : 'did the job'}`} />
+          <Row left="Defence" right={lineWord(xi.defence)} sub={`${xi.defence.toFixed(0)}, ${topLine === 'defence' ? 'carried the team' : 'did the job'}`} />
+          <Row left="Keeper" right={lineWord(xi.keeper)} sub={`${xi.keeper.toFixed(0)}, ${topLine === 'keeper' ? 'carried the team' : 'did the job'}`} />
         </div>
       </Card>
 
       {euro && !readOnly ? (
         <Card className="mt-3 border-white/20 p-4">
           <p className="ny-accent text-xs font-bold tracking-[0.2em]">EUROPE QUALIFIED · {euro.code}</p>
-          <p className="mt-1 text-sm text-slate-300">{pos}{ordinal(pos)} takes {me === 'You' ? 'your' : `${me}'s`} XI into the {euro.label}. The tournament itself lands in P4 — same XI carries over.</p>
+          <p className="mt-1 text-sm text-slate-300">{pos}{ordinal(pos)} takes {me === 'You' ? 'your' : `${me}'s`} XI into the {euro.label}.</p>
+          <div className="mt-2"><Button onClick={onEnterTournament} aria-label={`Enter the ${euro.label}`}>Enter the {euro.label} →</Button></div>
         </Card>
       ) : null}
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <Card className="p-4">
           <p className="text-[11px] tracking-[0.2em] text-slate-400">🥇 GOLDEN BOOT</p>
-          <p className="mt-1 text-lg font-bold text-white">{boot ? boot.name : '—'}</p>
-          <p className="ny-num text-sm text-slate-400">{boot ? `${boot.g} goals` : ''}</p>
+          <p className="mt-1 text-lg font-bold text-white">{boot ? boot.name : 'No scorer'}</p>
+          <p className="ny-num text-sm text-slate-400">{boot ? `${boot.g} goals` : 'no goals'}</p>
         </Card>
         <Card className="p-4">
           <p className="text-[11px] tracking-[0.2em] text-slate-400">🏆 PLAYER OF THE SEASON</p>
-          <p className="mt-1 text-lg font-bold text-white">{potm ? potm.name : '—'}</p>
-          <p className="ny-num text-sm text-slate-400">{potm ? `${potm.g}G · ${potm.a}A` : ''}</p>
+          <p className="mt-1 text-lg font-bold text-white">{potm ? potm.name : 'No scorer'}</p>
+          <p className="ny-num text-sm text-slate-400">{potm ? `${potm.g}G · ${potm.a}A` : 'no goals'}</p>
         </Card>
       </div>
 
       <Card className="mt-3 p-4" aria-label="Season story">
         <p className="text-[11px] tracking-[0.2em] text-slate-400">THE STORY</p>
         <ul className="mt-1 space-y-1 text-sm text-slate-300">
-          {best ? <li>Best afternoon: {best.gf}–{best.ga} vs {best.opp} (GW{best.round}).</li> : youRow.w > 0 ? <li>{youRow.w} wins sealed {pos}{ordinal(pos)} — the full match log lives in-app.</li> : <li>No wins. We don’t talk about this season.</li>}
+          {best ? <li>Best afternoon: {best.gf}–{best.ga} vs {best.opp} (GW{best.round}).</li> : youRow.w > 0 ? <li>{youRow.w} wins sealed {pos}{ordinal(pos)}, the full match log lives in-app.</li> : <li>No wins. We don’t talk about this season.</li>}
           {boot ? <li>{boot.name} carried the scoring with {boot.g} goals.</li> : null}
-          {january ? <li>{january.swapped ? `${january.inName} arrived for ${january.outName} in January — no undo, no regrets (probably).` : 'No January business. Backed the XI to the end.'}</li> : null}
+          {january ? <li>{january.swapped ? `${january.inName} arrived for ${january.outName} in January, no undo, no regrets (probably).` : 'No January business. Backed the XI to the end.'}</li> : null}
           {gaffer ? <li>{gaffer.name} brought {gaffer.epithet.toLowerCase()}.</li> : null}
         </ul>
       </Card>
@@ -176,15 +178,15 @@ export default function Final({ data, onHome, onNew, onRestart, readOnly = false
         <Card className="mt-3 p-4" aria-label="Share">
           <p className="text-[11px] tracking-[0.2em] text-slate-400">SHARE YOUR SEASON</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Button onClick={doCaption} aria-label="Copy caption">📋 Copy caption</Button>
-            <Button variant="ghost" onClick={doImage} aria-label="Save image">💾 Save image</Button>
-            <Button variant="ghost" onClick={doLink} aria-label="Copy link">🔗 Copy link</Button>
+            <Button onClick={doCaption} aria-label="Copy caption"><Copy size={15} aria-hidden="true" /> Copy caption</Button>
+            <Button variant="ghost" onClick={doImage} aria-label="Save image"><Download size={15} aria-hidden="true" /> Save image</Button>
+            <Button variant="ghost" onClick={doLink} aria-label="Copy link"><Link2 size={15} aria-hidden="true" /> Copy link</Button>
           </div>
           <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
           <div className="mt-3 flex gap-2">
             <Button variant="ghost" onClick={onNew} aria-label="New draft">New draft</Button>
             <Button variant="ghost" onClick={onHome} aria-label="Home">Home</Button>
-            <Button variant="ghost" onClick={onRestart} aria-label="Restart">↺</Button>
+            <Button variant="ghost" onClick={onRestart} aria-label="Restart"><RotateCcw size={14} aria-hidden="true" /></Button>
           </div>
         </Card>
       ) : (

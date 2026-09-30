@@ -56,8 +56,8 @@ function stoppage(minute, rng) {
 
 // Simulate one match; if userSquad given and user scored, attribute names.
 // rng: main stream (scores), sRng: isolated attribution stream.
-function playDetailed(homeOverall, awayOverall, rng, sRng, userSquad, userIsHome) {
-  const { hxg, axg } = expectedGoals(homeOverall, awayOverall);
+export function playDetailed(homeOverall, awayOverall, rng, sRng, userSquad, userIsHome, hfa = undefined) {
+  const { hxg, axg } = expectedGoals(homeOverall, awayOverall, hfa);
   const h = poisson(hxg, rng);
   const a = poisson(axg, rng);
   const scorers = [];

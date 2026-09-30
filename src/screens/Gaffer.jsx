@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Dices, RotateCcw } from 'lucide-react';
 import { xiStrength } from '../engine/ratings.js';
 import { wheel } from '../data/index.js';
 import { createRng, picksToXI, primeMap } from '../game/draft.js';
@@ -48,7 +49,7 @@ export default function Gaffer({ run, onSimulate, onRestart }) {
       try {
         setOdds(preseasonOdds(field.field, run.seed, 'YOU-1', userOverall, 400));
       } catch {
-        setToast('Odds failed — simulating anyway');
+        setToast('Odds failed, simulating anyway');
         onSimulate({ ...run, gaffer }, field, null);
       }
     }, 60);
@@ -100,7 +101,7 @@ export default function Gaffer({ run, onSimulate, onRestart }) {
             </Card>
             <div className="mt-4 flex gap-2">
               <Button onClick={() => onSimulate({ ...run, gaffer }, field, odds)} aria-label="Simulate season" className="flex-1 py-3 text-base">Simulate Season →</Button>
-              <Button variant="ghost" onClick={onRestart} aria-label="Restart">↺ Restart</Button>
+              <Button variant="ghost" onClick={onRestart} aria-label="Restart"><RotateCcw size={14} aria-hidden="true" /> Restart</Button>
             </div>
           </>
         )}
@@ -113,13 +114,13 @@ export default function Gaffer({ run, onSimulate, onRestart }) {
     <div className="mx-auto max-w-3xl">
       <p className="ny-accent text-xs font-bold tracking-[0.2em]">XI COMPLETE · <span className="ny-num">{strength.overall.toFixed(1)}</span></p>
       <h1 className="ny-display mt-1 text-3xl font-bold text-white">Add a gaffer?</h1>
-      <p className="mt-1 text-sm text-slate-400">A gaffer changes the style of your season, not your odds — one line gets +1. {field.replaced.length ? `You replace ${field.replaced.join(', ')}.` : ''}</p>
+      <p className="mt-1 text-sm text-slate-400">A gaffer changes the style of your season, not your odds. One line gets +1. {field.replaced.length ? `You replace ${field.replaced.join(', ')}.` : ''}</p>
 
       <Card className="mt-4 p-5 text-center" aria-label="Gaffer spin" aria-live="polite">
         {!spun || !gaffer ? (
           <>
             <p className="text-sm text-slate-400">Optional. Random parody gaffer, tiny nudge, big quotes.</p>
-            <Button onClick={spin} aria-label="Spin for a gaffer" className="mt-3 px-8 py-3">🎲 Spin for a gaffer</Button>
+            <Button onClick={spin} aria-label="Spin for a gaffer" className="mt-3 px-8 py-3"><Dices size={18} aria-hidden="true" /> Spin for a gaffer</Button>
           </>
         ) : (
           <>
@@ -139,7 +140,7 @@ export default function Gaffer({ run, onSimulate, onRestart }) {
         <Button disabled={!spun} onClick={() => cont(true)} aria-label="Continue with gaffer" className="flex-1 py-3">Continue{gaffer ? ` with ${gaffer.name.split(' ').pop()}` : ''} →</Button>
         <Button variant="ghost" onClick={() => cont(false)} aria-label="No gaffer">No gaffer (classic)</Button>
       </div>
-      <div className="mt-2"><Button variant="ghost" onClick={onRestart} aria-label="Restart">↺ Restart run</Button></div>
+      <div className="mt-2"><Button variant="ghost" onClick={onRestart} aria-label="Restart"><RotateCcw size={14} aria-hidden="true" /> Restart run</Button></div>
       <Toast msg={toast} />
     </div>
   );

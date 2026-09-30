@@ -62,7 +62,7 @@ export default function Setup({ initial, onStart, onBack }) {
             aria-label="Display name"
             value={s.displayName}
             onChange={(e) => set({ displayName: e.target.value })}
-            placeholder="e.g. Alex — shown on tables, no account needed"
+            placeholder="e.g. Alex, shown on tables, no account needed"
             maxLength={24}
             className="ny-focus glass w-full rounded-xl bg-transparent px-3 py-2 text-sm text-white placeholder:text-slate-500"
           />
@@ -133,7 +133,7 @@ export default function Setup({ initial, onStart, onBack }) {
             <Stepper label="REROLLS" value={s.rerolls} min={0} max={11} onChange={(rerolls) => set({ rerolls })} />
             <SegmentedControl label="Ratings visibility" value={s.blind ? 'blind' : 'open'} onChange={(v) => set({ blind: v === 'blind' })} options={[{ value: 'open', label: 'Ratings visible' }, { value: 'blind', label: 'Blind' }]} />
           </div>
-          <p className="mt-1 text-xs text-slate-500">Re-spins cost one reroll. Blind hides every number — trust your gut.</p>
+          <p className="mt-1 text-xs text-slate-500">Re-spins cost one reroll. Blind hides every number, trust your gut.</p>
         </Card>
 
         <Card>
@@ -174,9 +174,12 @@ export default function Setup({ initial, onStart, onBack }) {
           </div>
           <p className="mt-2 text-sm" aria-live="polite">
             {pool.length === 0
-              ? <span role="alert" className="text-red-300">No club-seasons in {s.era.from}–{s.era.to} — widen the range.</span>
+              ? <span role="alert" className="text-red-300">No club-seasons in {s.era.from}–{s.era.to}, widen the range.</span>
               : <span className="text-slate-300"><strong className="ny-accent">{pool.length}</strong> of {wheel.teams.length} club-seasons in the wheel ({s.era.from}–{s.era.to})</span>}
           </p>
+          {pool.length > 0 && pool.length < 4 ? (
+            <p className="mt-1 text-xs text-amber-300" role="note">Thin pool: the same clubs will come up again. Widen the era for variety.</p>
+          ) : null}
         </Card>
 
         <Card>

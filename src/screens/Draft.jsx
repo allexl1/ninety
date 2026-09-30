@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ArrowLeftRight, Dices, RotateCcw } from 'lucide-react';
 import { xiStrength } from '../engine/ratings.js';
 import { wheel } from '../data/index.js';
 import { buildCustom, PRESETS, SLOT_LINE } from '../game/formations.js';
@@ -93,7 +94,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
       const avail = availableSquad(team.players, run.picks);
       if (!avail.length || !squadHasMove(avail, need)) {
         setRun((r) => ({ ...r, freeSpinsUsed: r.freeSpinsUsed + 1 }));
-        setToast(draftMode === 'position' ? `Nobody fits ${slots[run.targetSlot]} — free re-spin` : 'Nobody fits an open slot — free re-spin');
+        setToast(draftMode === 'position' ? `Nobody fits ${slots[run.targetSlot]}, free re-spin` : 'Nobody fits an open slot, free re-spin');
         setSpinning(false);
         setTimeout(() => spinFnRef.current?.(), 350);
         return;
@@ -120,7 +121,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
   useEffect(() => { spinFnRef.current = doSpin; });
 
   function reroll() {
-    if (run.rerollsLeft <= 0) { setToast('No rerolls left — make it count'); return; }
+    if (run.rerollsLeft <= 0) { setToast('No rerolls left, make it count'); return; }
     setRun((r) => ({ ...r, rerollsLeft: r.rerollsLeft - 1 }));
     setTimeout(() => spinFnRef.current?.(), 50);
   }
@@ -141,7 +142,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
   function place(player, slotIndex) {
     const code = slots[slotIndex];
     if (run.picks[slotIndex] || !player.pos.includes(code)) {
-      setToast(`Can't play there — ${player.name} covers ${player.pos.join('/')}`);
+      setToast(`Can't play there, ${player.name} covers ${player.pos.join('/')}`);
       return;
     }
     const picks = [...run.picks];
@@ -188,7 +189,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
         <div className="flex items-center gap-2 text-sm">
           <span className="ny-num text-slate-300" aria-live="polite">Rerolls: {run.rerollsLeft}/{run.setup.rerolls}</span>
           <span className="ny-num text-slate-500">{filled}/11</span>
-          <Button variant="ghost" onClick={onRestart} aria-label="Restart run">↺ Restart</Button>
+          <Button variant="ghost" onClick={onRestart} aria-label="Restart run"><RotateCcw size={14} aria-hidden="true" /> Restart</Button>
         </div>
       </header>
 
@@ -204,7 +205,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
                     type="button"
                     onClick={() => {
                       if (moveFrom !== null) { moveTo(i); return; }
-                      if (run.picks[i]) { setMoveFrom(i); setToast(`${run.picks[i].player.name} armed — click an open eligible slot`); return; }
+                      if (run.picks[i]) { setMoveFrom(i); setToast(`${run.picks[i].player.name} armed, click an open eligible slot`); return; }
                       if (draftMode === 'position' && !run.picks[i]) setRun((r) => ({ ...r, targetSlot: i, selectedPlayer: null }));
                     }}
                     aria-label={run.picks[i] ? `${run.picks[i].player.name}, ${code}. Select to move.` : `${code} ${SLOT_NAMES[code]}${draftMode === 'position' ? '. Select as draft target.' : ', empty'}`}
@@ -249,9 +250,9 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
               </div>
             ))}
             <Button variant="ghost" className="mt-3 w-full" onClick={() => (moveFrom !== null ? setMoveFrom(null) : setToast('Click a placed player, then an open eligible slot'))} aria-label="Move a player">
-              ⇄ {moveFrom !== null ? 'Cancel move' : 'Move a player'}
+              <ArrowLeftRight size={15} aria-hidden="true" /> {moveFrom !== null ? 'Cancel move' : 'Move a player'}
             </Button>
-            {moveFrom !== null ? <p className="mt-1 text-xs text-slate-400">Moving {run.picks[moveFrom]?.player.name} — click an open eligible slot.</p> : null}
+            {moveFrom !== null ? <p className="mt-1 text-xs text-slate-400">Moving {run.picks[moveFrom]?.player.name}, click an open eligible slot.</p> : null}
           </Card>
         </div>
 
@@ -261,14 +262,14 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
             <Card className="cv flex flex-col items-center gap-2 p-8 text-center">
               <p className="text-xs tracking-[0.2em] text-slate-400">CLUB × SEASON</p>
               <h2 className="ny-display text-2xl font-bold text-white">
-                {filled >= 11 ? 'XI complete' : draftMode === 'position' && run.targetSlot !== null ? `Spin for a ${slots[run.targetSlot]}` : `${11 - filled} to fill — spin the wheel`}
+                {filled >= 11 ? 'XI complete' : draftMode === 'position' && run.targetSlot !== null ? `Spin for a ${slots[run.targetSlot]}` : `${11 - filled} to fill, spin the wheel`}
               </h2>
               {draftMode === 'position' && run.targetSlot === null && filled < 11 ? (
                 <p className="text-sm text-slate-400">Pick a slot on the pitch first, then spin for a club to fill it.</p>
               ) : null}
               {filled < 11 ? (
                 <Button onClick={() => spinFnRef.current?.()} disabled={spinning || (draftMode === 'position' && run.targetSlot === null)} aria-label="Spin the wheel" className="px-8 py-3 text-base">
-                  {spinning ? spinLabel || '…' : '🎰 Spin the Wheel'}
+                  {spinning ? spinLabel || '…' : <><Dices size={18} aria-hidden="true" /> Spin the Wheel</>}
                 </Button>
               ) : null}
               {!spinning ? <p className="text-xs text-slate-500">or press Space</p> : null}
@@ -300,7 +301,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
 
               {sel && placeOptions.length > 0 ? (
                 <Card className="cv mt-3 border-white/20 p-4" aria-label={`Place ${sel.name}`}>
-                  <p className="text-sm text-white">PLACE IN <strong className="ny-accent">({placeOptions.length})</strong> <span className="text-slate-400">— {sel.name}</span></p>
+                  <p className="text-sm text-white">PLACE IN <strong className="ny-accent">({placeOptions.length})</strong> <span className="text-slate-400">: {sel.name}</span></p>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {placeOptions.map((i) => (
                       <button key={i} type="button" onClick={() => place(sel, i)} aria-label={`Place in ${slots[i]} ${SLOT_NAMES[slots[i]]}`}
@@ -310,7 +311,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
                 </Card>
               ) : null}
               {sel && placeOptions.length === 0 ? (
-                <Card className="cv mt-3 p-4"><p className="text-sm text-red-300" role="alert">{sel.name} ({sel.pos.join('/')}) fits no open slot — pick another or re-spin.</p></Card>
+                <Card className="cv mt-3 p-4"><p className="text-sm text-red-300" role="alert">{sel.name} ({sel.pos.join('/')}) fits no open slot, pick another or re-spin.</p></Card>
               ) : null}
 
               <div className="ny-grid mt-3" role="list" aria-label="Squad players">
@@ -350,7 +351,7 @@ export default function Draft({ run: initialRun, onUpdate, onComplete, onRestart
               return (
                 <Row
                   key={i}
-                  left={pick ? pick.player.name : `${code} — open`}
+                  left={pick ? pick.player.name : `${code} · open`}
                   right={pick ? rate(pick.player) : '·'}
                   sub={pick ? `${code} · ${pick.player.pos.join('/')} · ${pick.player.nation}` : SLOT_NAMES[code]}
                 />

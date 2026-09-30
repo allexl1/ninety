@@ -68,17 +68,40 @@ body {
 .ny-display { font-family: var(--ny-disp); letter-spacing: 0.01em; }
 .ny-num { font-family: var(--ny-disp); font-variant-numeric: tabular-nums; }
 
-/* Hero → content melt: sharp art dissolves into SAME art blurred; scrim ends
-   at the ghost's darkness so no seam line can form. */
-.ny-hero { position: relative; overflow: hidden; border-radius: var(--ny-r-lg); border: 1px solid var(--ny-hairline); }
-.ny-hero img.sharp { display: block; width: 100%; height: 300px; object-fit: cover; }
-.ny-hero .ghost {
-  position: absolute; inset: auto 0 0 0; height: 120px;
-  background: inherit; filter: blur(24px) saturate(1.2);
-  transform: scaleY(-1);
-  mask-image: linear-gradient(180deg, transparent, black);
+/* Identity motif: the centre circle. Reason: one repeated gesture that says
+   football without photos, logos, or stock art. Volt ring, cropped, calm. */
+.ny-motif { position: relative; overflow: hidden; }
+.ny-motif-ring {
+  position: absolute; right: -140px; top: 50%;
+  width: 420px; height: 420px; transform: translateY(-50%);
+  border: 2px solid rgba(217, 255, 61, 0.5); border-radius: 9999px;
+  pointer-events: none;
 }
-.ny-hero .scrim { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(7,11,20,0.9) 100%); }
+.ny-motif-ring::before {
+  content: ''; position: absolute; inset: 56px;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 9999px;
+}
+.ny-motif-spot {
+  position: absolute; right: 64px; top: 50%;
+  width: 10px; height: 10px; transform: translate(-50%, -50%);
+  background: var(--ny-accent); border-radius: 9999px; pointer-events: none;
+}
+.ny-motif-line {
+  position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.14), rgba(255,255,255,0));
+  pointer-events: none;
+}
+@media (max-width: 640px) {
+  .ny-motif-ring { width: 300px; height: 300px; right: -110px; }
+  .ny-motif-spot { right: 34px; }
+}
+.ny-hero {
+  position: relative; overflow: hidden;
+  border-radius: var(--ny-r-lg); border: 1px solid var(--ny-hairline);
+  background:
+    radial-gradient(700px 320px at 85% 20%, rgba(217, 255, 61, 0.06), transparent 60%),
+    linear-gradient(180deg, #0d1526 0%, #070b14 100%);
+}
 
 /* Rails + grids vocabulary */
 .ny-rail { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 280px); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
